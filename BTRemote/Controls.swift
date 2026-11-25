@@ -31,7 +31,9 @@ struct HoldButton<Background: View, Label: View>: View {
     let onRelease: () -> Void
     @ViewBuilder var background: () -> Background
     @ViewBuilder var label: () -> Label
+    var repeatInterval: TimeInterval? = nil
     @State private var pressed = false
+    @State private var repeatTimer: Timer?
 
     var body: some View {
         ZStack {
@@ -41,6 +43,33 @@ struct HoldButton<Background: View, Label: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .opacity(pressed ? 0.5 : 1)
         .contentShape(Rectangle())
-        .modifier(PressGesture(onPress: onPress, onRelease: onRelease, pressed: $pressed))
+        .modifier(PressGesture(onPress: handlePress, onRelease: handleRelease, pressed: $pressed))
+        .onDisappear {
+            if pressed {
+                pressed = false
+                handleRelease()
+            } else {
+                stopRepeating()
+            }
+        }
+    }
+
+    private func handlePress() {
+        onPress()
+        guard let repeatInterval, repeatInterval > 0 else { return }
+        stopRepeating()
+        repeatTimer = Timer.scheduledTimer(withTimeInterval: repeatInterval, repeats: true) { _ in
+            onPress()
+        }
+    }
+
+    private func handleRelease() {
+        stopRepeating()
+        onRelease()
+    }
+
+    private func stopRepeating() {
+        repeatTimer?.invalidate()
+        repeatTimer = nil
     }
 }
